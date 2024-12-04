@@ -13,7 +13,7 @@ $dataService = DataService::Configure(array(
    'ClientSecret' =>  $config['client_secret'],
    'RedirectURI' => $config['oauth_redirect_uri'],
    'scope' => $config['oauth_scope'],
-   'baseUrl' => "development"
+   'baseUrl' => "production"
 ));
 
 $OAuth2LoginHelper = $dataService->getOAuth2LoginHelper();
@@ -26,13 +26,13 @@ $_SESSION['authUrl'] = $authUrl;
 if (isset($_SESSION['sessionAccessToken'])) {
 
    $accessToken = $_SESSION['sessionAccessToken'];
-   $accessTokenJson = array(
+   $accessTokenJson = [
       'token_type' => 'bearer',
       'access_token' => $accessToken->getAccessToken(),
       'refresh_token' => $accessToken->getRefreshToken(),
       'x_refresh_token_expires_in' => $accessToken->getRefreshTokenExpiresAt(),
       'expires_in' => $accessToken->getAccessTokenExpiresAt()
-   );
+   ];
 
    $dataService->updateOAuth2Token($accessToken);
    $oauthLoginHelper = $dataService->getOAuth2LoginHelper();

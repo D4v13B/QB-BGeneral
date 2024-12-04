@@ -28,7 +28,7 @@ if (isset($_GET["r"])) {
          $httpClient = new HttpClient();
          $pagoProcessor = new ServiceTransact($db, $httpClient);
 
-         $pagoProcessor->procesarPagos();
+         // $pagoProcessor->procesarPagos();
 
          break;
       case "getPays":

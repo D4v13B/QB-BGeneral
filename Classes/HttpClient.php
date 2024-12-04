@@ -10,13 +10,13 @@ class HttpClient
 
    public function __construct()
    {
-      $config = require "./config.php";
+      $config = require "config.php";
       $this->baseUrl = $config["apiBaseUrl"];
 
       // Crear una instancia de Guzzle Client con la URL base
       $this->client = new Client([
          'base_uri' => $this->baseUrl,
-         'timeout'  => 5.0,  // Configurar un tiempo de espera (opcional)
+         'timeout'  => 120.0,  // Configurar un tiempo de espera (opcional)
       ]);
    }
 
@@ -29,7 +29,7 @@ class HttpClient
     */
    public function autenticar(string $clientId, string $clientSecret): ?string
    {
-      $url = $this->baseUrl . 'autenticacion/autenticar';
+      $url = 'autenticacion/autenticar';
 
       try {
          $response = $this->client->get($url, [
@@ -49,6 +49,7 @@ class HttpClient
       } catch (RequestException $e) {
          // Manejar el error y mostrar el mensaje de respuesta
          if ($e->hasResponse()) {
+            print_r($e);
             $errorBody = $e->getResponse()->getBody()->getContents();
             echo "Error en la respuesta de la API: " . $errorBody;
          } else {

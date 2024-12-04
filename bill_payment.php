@@ -1,4 +1,5 @@
 <?php
+
 /**
  * read_payment.php
  * 
@@ -30,7 +31,7 @@ include "app.php"; // Se incluye el archivo de configuración y manejo de sesion
 
 if (isset($_SESSION['sessionAccessToken'])) {
    include "./Classes/Db.php"; // Se incluye la clase de conexión a la base de datos
-   
+
    // Se obtiene el realm ID del token de acceso
    $realmID = (int) $_SESSION['sessionAccessToken']->getRealmID();
    $db = new Db(); // Se crea una instancia de la clase Db
@@ -53,9 +54,11 @@ if (isset($_SESSION['sessionAccessToken'])) {
    /**
     * Guardar los pagos no guardados en la base de datos
     */
-    if(!empty($unsavePayment)){
-       $db->savePayments($unsavePayment, $realmID); // Se insertan los nuevos pagos en la base de datos
-      }
+   if (!empty($unsavePayment)) {
+      echo $db->savePayments($unsavePayment, $realmID); // Se insertan los nuevos pagos en la base de datos
+   }else{
+      echo "No hay pagos pendientes desde quickbooks";
+   }
 
    // Se pueden agregar más funcionalidades relacionadas con los pagos de proveedores si es necesario
    // Por ejemplo, se pueden realizar operaciones adicionales sobre los pagos procesados.

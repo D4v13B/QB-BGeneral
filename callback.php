@@ -22,8 +22,7 @@
         /*
             * Update the OAuth2Token
             */
-        $accessToken =
-        $OAuth2LoginHelper->exchangeAuthorizationCodeForToken($parseUrl['code'],
+        $accessToken = $OAuth2LoginHelper->exchangeAuthorizationCodeForToken($parseUrl['code'],
         $parseUrl['realmId']);
         $dataService->updateOAuth2Token($accessToken);
 

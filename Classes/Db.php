@@ -89,14 +89,19 @@ class Db
       $this->connect();
 
       try {
-         
+
          foreach ($vendors as $vend) {
-            $id = $vend->Id;
-            $name = $vend->DisplayName;
-            
-            $values[] = "($id, '$name', '$realmId')";
+            $id = (int) $vend->Id;
+            $name = addslashes($vend->DisplayName); // Escapar caracteres problemáticos
+            $realmId = addslashes($realmId);
+
+            $values[] = "($id, '$name', '$realmId', '0', '0', '10')";
          }
-         $stmt = $this->connection->query("INSERT INTO bg_proveedores(qb_vendor_id, bgpr_proveedor, bgpr_realm_id) VALUES " . implode(', ', $values));
+
+         $sql = "INSERT INTO bg_proveedores(qb_vendor_id, bgpr_proveedor, bgpr_realm_id, bgpr_numero_cuenta, bgpr_tipo_cuenta, bgpr_banco) VALUES " . implode(', ', $values);
+
+         $stmt = $this->connection->query($sql);
+
 
          // $stmt->execute([":VAL" => ]);
 
@@ -142,52 +147,67 @@ class Db
    {
       $this->connect();
       $valuesArray = [];
+      $placeholdersArray = []; // Para almacenar los placeholders de los valores
 
       try {
          $empresaInfo = $this->getEmpresaInfo($realmId);
+         $empresaId = $empresaInfo["empr_id"];
          $empresaNumeroCuenta = $empresaInfo["empr_numero_cuenta"];
          $empresaTipoCuenta = $empresaInfo["empr_tipo_cuenta"];
 
+         // Prepara la consulta SQL con placeholders
          $stmt = $this->connection->prepare("INSERT INTO bg_transacciones(
-            tran_descripcion, 
-            tran_monto, 
-            tran_fecha_inicial, 
-            tran_propia,
-            tran_codigo_producto, 
-            tran_cuenta_origen, 
-            tran_nombre_beneficiario, 
-            tran_codigo_banco, 
-            tran_codigo_producto_beneficiario,
-            tran
-         ) 
-         VALUES :VAL");
+                tran_descripcion, 
+                tran_monto, 
+                tran_fecha_inicial, 
+                tran_propia,
+                tran_codigo_producto, 
+                tran_cuenta_origen,
+                tran_nombre_beneficiario,
+                tran_codigo_banco, 
+                tran_codigo_producto_beneficiario,
+                tran_numero_cuenta_beneficiario,
+                tran_estado,
+                empr_id
+            ) 
+            VALUES
+            (:descripcion, :monto, NOW(), '0', :codigo_producto, :cuenta_origen, :nombre_beneficiario, :codigo_banco, :codigo_producto_beneficiario, :numero_cuenta_beneficiario, '0', :empresa_id)");
 
+         // Inserta los pagos uno por uno
          foreach ($payments as $pay) {
             $id = $pay->Id;
+            $vendorRef = $pay->VendorRef;
             $monto = $pay->TotalAmt;
-            $vendorInfo = $this->getVendorInfo($pay->VendorRef, $realmId);
+            $vendorInfo = $this->getVendorInfo($realmId, $vendorRef);
+            
+            if (empty($vendorInfo)) {
+               echo "Vendor Info no encontrada";
+               continue;
+            }
+            
             $vendorName = $vendorInfo["bgpr_proveedor"];
             $vendorTipoCuenta = $vendorInfo["bgpr_tipo_cuenta"];
             $vendorBanco = $vendorInfo["bgpr_banco"];
             $vendorNumeroCuenta = $vendorInfo["bgpr_numero_cuenta"];
 
-            $values = "(
-               'Pago a $vendorName', 
-               '$monto', 
-               NOW(), 
-               'true', 
-               '$empresaTipoCuenta', 
-               '$empresaNumeroCuenta', 
-               '$vendorName', 
-               '$vendorBanco', 
-               '$vendorTipoCuenta')";
 
-            $valuesArray[] = $values;
+            // Los valores que serán insertados
+            $valuesArray = [
+               ":descripcion" => "Pago a $vendorName",
+               ":monto" => $monto,
+               ":codigo_producto" => $empresaTipoCuenta,
+               ":cuenta_origen" => $empresaNumeroCuenta,
+               ":nombre_beneficiario" => $vendorName,
+               ":codigo_banco" => $vendorBanco,
+               ":codigo_producto_beneficiario" => $vendorTipoCuenta,
+               ":numero_cuenta_beneficiario" => $vendorNumeroCuenta,
+               ":empresa_id" => $empresaId
+            ];
+
+            $stmt->execute($valuesArray);
 
             $this->savePaysProceseed($id, $realmId, $vendorName);
          }
-
-         $stmt->execute([":VAL" => implode(",", $valuesArray)]);
 
          return true;
       } catch (PDOException $e) {
@@ -195,6 +215,7 @@ class Db
          return false;
       }
    }
+
 
    /**
     * Obtiene la información de una empresa en función de su `realmId`.
@@ -226,21 +247,29 @@ class Db
     * @return array Un array asociativo con la información del proveedor o un array vacío en caso de error.
     * @throws PDOException Si ocurre algún error al ejecutar la consulta.
     */
-   public function getVendorInfo(int $realmId, int $qbVendorId): array
+   public function getVendorInfo(int $realmId, $qbVendorId): array
    {
       $this->connect();
 
+      
       try {
-         $stmt = $this->connection->prepare("SELECT * FROM bg_proveedores WHERE bgpr_realm_id = :realmId AND qb_vendor_id = :vendorId");
-         $stmt->execute([
-            ":realmId" => $realmId,
-            ":vendorId" => $qbVendorId
-         ]);
+         // echo "VendorID $qbVendorId" . " " . "Realm ID $realmId" . "<br>";s
 
-         return $stmt->fetch(PDO::FETCH_ASSOC);
+         echo $sql = "SELECT * FROM bg_proveedores WHERE bgpr_realm_id = '$realmId' AND qb_vendor_id = '$qbVendorId'";
+         $stmt = $this->connection->query($sql);
+
+         $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+         if ($result === false) {
+            error_log("Error en getVendorInfo: Vendor Info vacio");
+            echo "VendorID $qbVendorId" . " " . "Realm ID $realmId VACIO" . "<br>";
+            return [];
+         }
+
+         return $result;
       } catch (PDOException $e) {
-         echo "Error: " . $e->getMessage();
-         return [];
+         error_log("Error en getVendorInfo: " . $e->getMessage());
+         return ["error" => $e->getMessage()];
       }
    }
 
@@ -288,9 +317,9 @@ class Db
       $this->connect();
 
       try {
-         // Prepara la consulta SQL para obtener las transacciones y los detalles de la empresa
+         // Prepara la consulta SQL para obtener las transacciones y loRMs detalles de la empresa y que no han sido cargados a BGeneral
          $stmt = $this->connection->prepare("SELECT * FROM bg_transacciones a
-        INNER JOIN empresas ON empresas.empr_id = a.empr_id");
+        INNER JOIN empresas ON empresas.empr_id = a.empr_id WHERE tran_estado = 0");
 
          // Ejecuta la consulta
          $stmt->execute();
@@ -299,6 +328,29 @@ class Db
          return $stmt->fetchAll(PDO::FETCH_ASSOC);
       } catch (PDOException $e) {
          // Muestra el mensaje de error en caso de excepción y retorna false
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function updatePayStatus(int $payId, int $status, string $res, string $codigoPago = null): bool
+   {
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("UPDATE bg_transacciones SET tran_estado = :status, tran_res = :res_api, tran_codigo_pago WHERE trans_id = :id");
+
+         // Ejecuta la consulta
+         $stmt->execute([
+            ":status" => $status,
+            ":id" => $payId,
+            ":res_api" => $res,
+            ":codigoPago" => $codigoPago
+         ]);
+
+         return true;
+      } catch (PDOException $e) {
          echo "Error: " . $e->getMessage();
          return false;
       }
