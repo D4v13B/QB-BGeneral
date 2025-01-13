@@ -91,8 +91,8 @@ class Db
       try {
 
          foreach ($vendors as $vend) {
-            $id = (int) $vend->Id;
-            $name = addslashes($vend->DisplayName); // Escapar caracteres problemáticos
+            $id = (int) $vend["Id"];
+            $name = $this->quitarCaracteresEspeciales($vend["DisplayName"]); // Escapar caracteres problemáticos
             $realmId = addslashes($realmId);
 
             $values[] = "($id, '$name', '$realmId', '0', '0', '10')";
@@ -100,16 +100,22 @@ class Db
 
          $sql = "INSERT INTO bg_proveedores(qb_vendor_id, bgpr_proveedor, bgpr_realm_id, bgpr_numero_cuenta, bgpr_tipo_cuenta, bgpr_banco) VALUES " . implode(', ', $values);
 
-         $stmt = $this->connection->query($sql);
-
-
-         // $stmt->execute([":VAL" => ]);
+         $this->connection->query($sql);
 
          return true;
       } catch (PDOException $e) {
          echo "Error: " . $e->getMessage();
          return false;
       }
+   }
+
+   public function quitarCaracteresEspeciales($string)
+   {
+      // Convertir caracteres especiales (tildes, ñ) a ASCII
+      $string = iconv('UTF-8', 'ASCII//TRANSLIT', $string);
+      // Eliminar todo lo que no sea una letra (a-z o A-Z)
+      $string = preg_replace('/[^a-zA-Z\s]/', '', $string);
+      return $string;
    }
 
    /**
@@ -146,8 +152,8 @@ class Db
    public function savePayments(array $payments, int $realmId): bool
    {
       $this->connect();
-      $valuesArray = [];
-      $placeholdersArray = []; // Para almacenar los placeholders de los valores
+
+      print_r($payments);
 
       try {
          $empresaInfo = $this->getEmpresaInfo($realmId);
@@ -155,7 +161,6 @@ class Db
          $empresaNumeroCuenta = $empresaInfo["empr_numero_cuenta"];
          $empresaTipoCuenta = $empresaInfo["empr_tipo_cuenta"];
 
-         // Prepara la consulta SQL con placeholders
          $stmt = $this->connection->prepare("INSERT INTO bg_transacciones(
                 tran_descripcion, 
                 tran_monto, 
@@ -173,25 +178,31 @@ class Db
             VALUES
             (:descripcion, :monto, NOW(), '0', :codigo_producto, :cuenta_origen, :nombre_beneficiario, :codigo_banco, :codigo_producto_beneficiario, :numero_cuenta_beneficiario, '0', :empresa_id)");
 
-         // Inserta los pagos uno por uno
+         $this->connection->beginTransaction();
+
          foreach ($payments as $pay) {
-            $id = $pay->Id;
-            $vendorRef = $pay->VendorRef;
-            $monto = $pay->TotalAmt;
-            $vendorInfo = $this->getVendorInfo($realmId, $vendorRef);
-            
+            $id = $pay["Id"] ?? null;
+            $vendorRef = $pay["VendorRef"] ?? null;
+            $monto = $pay["TotalAmt"] ?? null; 
+
+            $vendorInfo = $this->getVendorInfo($realmId, $vendorRef["value"]);
+
             if (empty($vendorInfo)) {
-               echo "Vendor Info no encontrada";
+               error_log("Vendor Info no encontrada para pago ID $id. Proveedor " . $vendorRef["name"]);
                continue;
             }
+
             
             $vendorName = $vendorInfo["bgpr_proveedor"];
             $vendorTipoCuenta = $vendorInfo["bgpr_tipo_cuenta"];
             $vendorBanco = $vendorInfo["bgpr_banco"];
             $vendorNumeroCuenta = $vendorInfo["bgpr_numero_cuenta"];
+         
+            if($vendorTipoCuenta == 0 or $vendorNumeroCuenta == 0 or $vendorNumeroCuenta == null or $vendorTipoCuenta == null){
+               error_log("{$vendorName} no tiene DATOS BANCARIOS registrados para la empresa de quickbooks con ID {$realmId}");
+               continue;
+            }
 
-
-            // Los valores que serán insertados
             $valuesArray = [
                ":descripcion" => "Pago a $vendorName",
                ":monto" => $monto,
@@ -205,16 +216,18 @@ class Db
             ];
 
             $stmt->execute($valuesArray);
-
             $this->savePaysProceseed($id, $realmId, $vendorName);
          }
 
+         $this->connection->commit();
          return true;
       } catch (PDOException $e) {
-         echo "Error: " . $e->getMessage();
+         $this->connection->rollBack();
+         error_log("Error al guardar pagos: " . $e->getMessage());
          return false;
       }
    }
+
 
 
    /**
@@ -239,6 +252,36 @@ class Db
       }
    }
 
+   public function getEmpresasActivas(): array
+   {
+      $this->connect();
+
+      try {
+         $stmt = $this->connection->prepare("SELECT * FROM empresas WHERE empr_qb_activa = '1'");
+         $stmt->execute();
+
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return [];
+      }
+   }
+
+   public function getEmpresas(): array
+   {
+      $this->connect();
+
+      try {
+         $stmt = $this->connection->prepare("SELECT * FROM empresas WHERE empr_qb_realm_id IS NOT NULL OR empr_qb_realm_id != ''");
+         $stmt->execute();
+
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return [];
+      }
+   }
+
    /**
     * Obtiene la información de un proveedor específico.
     *
@@ -251,18 +294,18 @@ class Db
    {
       $this->connect();
 
-      
+
       try {
          // echo "VendorID $qbVendorId" . " " . "Realm ID $realmId" . "<br>";s
 
-         echo $sql = "SELECT * FROM bg_proveedores WHERE bgpr_realm_id = '$realmId' AND qb_vendor_id = '$qbVendorId'";
+         $sql = "SELECT * FROM bg_proveedores WHERE bgpr_realm_id = '$realmId' AND qb_vendor_id = '$qbVendorId'";
          $stmt = $this->connection->query($sql);
 
          $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
          if ($result === false) {
             error_log("Error en getVendorInfo: Vendor Info vacio");
-            echo "VendorID $qbVendorId" . " " . "Realm ID $realmId VACIO" . "<br>";
+            echo "VendorID $qbVendorId" . " con Realm ID $realmId VACIO" . "<br>";
             return [];
          }
 
@@ -312,17 +355,20 @@ class Db
     *
     * @throws PDOException Si ocurre un error en la ejecución de la consulta SQL, se lanza una excepción con el mensaje de error correspondiente.
     */
-   public function getPaysBg(): array
+   public function getPaysBg(int $empr_id): array
    {
       $this->connect();
 
       try {
          // Prepara la consulta SQL para obtener las transacciones y loRMs detalles de la empresa y que no han sido cargados a BGeneral
          $stmt = $this->connection->prepare("SELECT * FROM bg_transacciones a
-        INNER JOIN empresas ON empresas.empr_id = a.empr_id WHERE tran_estado = 0");
+        INNER JOIN empresas b ON b.empr_id = a.empr_id 
+        WHERE (tran_estado = 0 OR tran_estado IS NULL) AND b.empr_id = :empr_id LIMIT 50");
 
          // Ejecuta la consulta
-         $stmt->execute();
+         $stmt->execute([
+            ":empr_id" => $empr_id
+         ]);
 
          // Retorna los resultados de la consulta como un array asociativo
          return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -333,13 +379,13 @@ class Db
       }
    }
 
-   public function updatePayStatus(int $payId, int $status, string $res, string $codigoPago = null): bool
+   public function updatePayResponse(int $payId, int $status, string $res, string $codigoPago = null): bool
    {
       $this->connect();
 
       try {
 
-         $stmt = $this->connection->prepare("UPDATE bg_transacciones SET tran_estado = :status, tran_res = :res_api, tran_codigo_pago WHERE trans_id = :id");
+         $stmt = $this->connection->prepare("UPDATE bg_transacciones SET tran_estado = :status, tran_res = :res_api, tran_codigo_pago = :codigoPago WHERE trans_id = :id");
 
          // Ejecuta la consulta
          $stmt->execute([
@@ -347,6 +393,105 @@ class Db
             ":id" => $payId,
             ":res_api" => $res,
             ":codigoPago" => $codigoPago
+         ]);
+
+         return true;
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function updatePayStatus(int $payId, string $res)
+   {
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("UPDATE bg_transacciones SET tran_status_detail = :status WHERE trans_id = :id");
+
+         // Ejecuta la consulta
+         $stmt->execute([
+            ":status" => $res,
+            ":id" => $payId
+         ]);
+
+         return true;
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function getPendingPaysAutorization(int $empr_id)
+   {
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("SELECT trans_id FROM bg_transacciones WHERE tran_status_detail IS NULL or tran_status_detail = 'AUTORIZACION PENDIENTE' AND empr_id = :empr_id");
+
+         // Ejecuta la consulta
+         $stmt->execute([
+            ":empr_id" => $empr_id
+         ]);
+
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function getTokens($empr_id)
+   {
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("SELECT empr_access_token, empr_refresh_token FROM empresas WHERE empr_id = :empr_id AND empr_access_token IS NOT NULL AND empr_refresh_token IS NOT NULL");
+         $stmt->execute([":empr_id" => $empr_id]);
+
+         // Ejecuta la consulta
+         $stmt->execute();
+
+         $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+         if (!$res) {
+            return false;
+         }
+
+         return $res;
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function updateTokens() {}
+
+   public function saveTokens($realm_id, $access_token, $refresh_token, $refresh_expires_in, $access_expires_in, $access_token_obj)
+   {
+
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("UPDATE empresas SET empr_access_token = :access_token, 
+         empr_refresh_token = :refresh_token,
+         empr_refresh_token_expiration_date = :refresh_expiration_date,
+         empr_access_token_expiration_date = :access_expiration_date,
+         accessTokenObj = :access_token_obj
+         WHERE empr_qb_realm_id = :id");
+
+         // Ejecuta la consulta
+         $stmt->execute([
+            ":access_token" => $access_token,
+            ":refresh_token" => $refresh_token,
+            ":refresh_expiration_date" => $refresh_expires_in,
+            ":access_expiration_date" => $access_expires_in,
+            ":access_token_obj" => $access_token_obj,
+            ":id" => $realm_id
          ]);
 
          return true;

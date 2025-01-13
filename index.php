@@ -5,7 +5,7 @@ use QuickBooksOnline\API\DataService\DataService;
 
 $config = include('config.php');
 
-session_start();
+// session_start();
 
 $dataService = DataService::Configure(array(
     'auth_mode' => 'oauth2',

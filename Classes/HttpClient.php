@@ -99,7 +99,7 @@ class HttpClient
          return $response->getBody()->getContents();
       } catch (RequestException $e) {
          if ($e->hasResponse()) {
-            return "Error en la respuesta de la API: " . $e->getResponse()->getBody()->getContents();
+            return $e->getResponse()->getBody()->getContents();
          } else {
             return "Error de solicitud: " . $e->getMessage();
          }
