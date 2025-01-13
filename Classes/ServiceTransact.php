@@ -25,18 +25,18 @@ class ServiceTransact
       foreach ($pagosNoProcesados as $pago) {
          $tranPropia = $pago["tran_propia"] == 0 ? false : true;;
          $transacciones[] = [
-            "descripcion" => $pago['tran_descripcion'] ?? "TRANFE PROPIA H2H",
-            "monto" => (float)$pago['tran_monto'],
+            "descripcion" => strval($pago['tran_descripcion'] ?? "TRANFE PROPIA H2H"),
+            "monto" => (float)number_format((float)$pago['tran_monto'], 0, '.', ''), // Forzar formato de 2 decimales
             "fechaInicial" => date("Y-m-d\TH:i:s.v\Z", strtotime($pago['tran_fecha_inicial'])),
-            "trnPropia" => $tranPropia,
-            "codigoProducto" => $pago['empr_tipo_cuenta'],
-            "cuentaOrigen" => strval($pago['empr_numero_cuenta']),
-            "nombreBeneficiario" => $pago['tran_nombre_beneficiario'],
-            "codigoProductoBeneficiario" => $pago['tran_codigo_producto_beneficiario'],
-            "numeroCuentaBeneficiario" => trim($pago['tran_numero_cuenta_beneficiario']),
-            "secuencial" => $pago['trans_id'],
-            "codigoBanco" => $pago['tran_codigo_banco']
-         ]; 
+            "trnPropia" => (bool)$tranPropia,
+            "codigoProducto" => (float)number_format((float)$pago['empr_tipo_cuenta'], 2, '.', ''), // Forzar formato de 2 decimales
+            "cuentaOrigen" => strval($pago['empr_numero_cuenta']), // Mantener como cadena
+            "nombreBeneficiario" => strval($pago['tran_nombre_beneficiario']),
+            "codigoBanco" => (int)$pago['tran_codigo_banco'], // Convertir a entero
+            "codigoProductoBeneficiario" => (int)$pago['tran_codigo_producto_beneficiario'], // Convertir a entero
+            "numeroCuentaBeneficiario" => strval(trim($pago['tran_numero_cuenta_beneficiario'])), // Mantener como cadena
+            "secuencial" => (int)$pago['trans_id'], // Convertir a entero
+         ];
       }
 
       // Configura los encabezados con el token de autenticación
@@ -49,8 +49,6 @@ class ServiceTransact
       $bodyHttp = [
          "transacciones" => $transacciones
       ];
-
-      var_dump ($bodyHttp);
 
       try {
          // Utilizamos la clase HttpClient para enviar los datos
