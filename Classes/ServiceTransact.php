@@ -1,5 +1,5 @@
 <?php
-
+ini_set('serialize_precision',10);
 use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
 
 class ServiceTransact
@@ -23,10 +23,13 @@ class ServiceTransact
       $transacciones = [];
 
       foreach ($pagosNoProcesados as $pago) {
+         $montoPago = (float)number_format($pago["tran_monto"], 2, ".", "");
+
          $tranPropia = $pago["tran_propia"] == 0 ? false : true;;
          $transacciones[] = [
             "descripcion" => strval($pago['tran_descripcion'] ?? "TRANFE PROPIA H2H"),
-            "monto" => (float)number_format((float)$pago['tran_monto'], 0, '.', ''), // Forzar formato de 2 decimales
+            // "monto" => number_format($pago['tran_monto'], 2, ".", ""), // Forzar formato de 2 decimales
+            "monto" => $montoPago, // Forzar formato de 2 decimales
             "fechaInicial" => date("Y-m-d\TH:i:s.v\Z", strtotime($pago['tran_fecha_inicial'])),
             "trnPropia" => (bool)$tranPropia,
             "codigoProducto" => (float)number_format((float)$pago['empr_tipo_cuenta'], 2, '.', ''), // Forzar formato de 2 decimales
@@ -38,6 +41,8 @@ class ServiceTransact
             "secuencial" => (int)$pago['trans_id'], // Convertir a entero
          ];
       }
+
+      var_dump($transacciones);
 
       // Configura los encabezados con el token de autenticación
       $headers = [
