@@ -4,12 +4,12 @@ if (!isset($_GET["a"])) {
    die("No se puede proceder con ninguna operacion");
 }
 
-require "vendor/autoload.php";
-require "./Classes/Db.php";
-require "./Classes/HttpClient.php";
-require "./Classes/ServiceTransact.php";
+require_once "vendor/autoload.php";
+require_once "./Classes/Db.php";
+require_once "./Classes/HttpClient.php";
+require_once "./Classes/ServiceTransact.php";
 
-$config = require "./config.php";
+$config = require_once "./config.php";
 
 $clientHttp = new HttpClient();
 $db = new Db();

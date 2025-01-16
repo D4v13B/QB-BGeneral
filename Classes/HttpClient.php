@@ -10,7 +10,7 @@ class HttpClient
 
    public function __construct()
    {
-      $config = require "config.php";
+      $config = require_once "config.php";
       $this->baseUrl = $config["apiBaseUrl"];
 
       // Crear una instancia de Guzzle Client con la URL base

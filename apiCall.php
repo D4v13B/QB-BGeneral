@@ -9,7 +9,7 @@ function makeAPICall()
 {
 
     // Create SDK instance
-    $config = include('config.php');
+    $config = include_once('config.php');
     $dataService = DataService::Configure(array(
         'auth_mode' => 'oauth2',
         'ClientID' => $config['client_id'],

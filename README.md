@@ -70,7 +70,7 @@ Lets take a look at the key differences between OAuth2.0 and OpenID connect as p
 
 * **OAuth2.0**  
  
-    * Scope - Available scopes include: (Space delimited set of permissions that the application requests)
+    * Scope - Available scopes include_once: (Space delimited set of permissions that the application requests)
                  
           com.intuit.quickbooks.accounting — QuickBooks Online API
                  
@@ -92,7 +92,7 @@ Lets take a look at the key differences between OAuth2.0 and OpenID connect as p
     
 * **OpenID Connect**
 
-    * Scope -  Available scopes include: (Space delimited set of permissions that the application requests)   
+    * Scope -  Available scopes include_once: (Space delimited set of permissions that the application requests)   
                      
           openid — QuickBooks Online API
                  

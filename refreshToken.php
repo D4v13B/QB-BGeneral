@@ -4,9 +4,9 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
 
-require __DIR__ . '/vendor/autoload.php';
-require __DIR__ . "/Classes/Db.php";
-$config = include __DIR__ . '/config.php';
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . "/Classes/Db.php";
+$config = include_once __DIR__ . '/config.php';
 
 $clientId = $config['client_id'];
 $clientSecret = $config['client_secret'];

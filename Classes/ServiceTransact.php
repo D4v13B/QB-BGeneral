@@ -10,7 +10,7 @@ class ServiceTransact
 
    public function __construct(Db $db, HttpClient $httpClient)
    {
-      $this->config = require "config.php";
+      $this->config = require_once "config.php";
       $this->db = $db;
       $this->httpClient = $httpClient;
    }

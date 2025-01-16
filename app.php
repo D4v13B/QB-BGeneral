@@ -5,8 +5,8 @@ use QuickBooksOnline\API\DataService\DataService;
 
 session_start();
 
-$config = include(__DIR__ . '/config.php');
-include __DIR__ . "/Classes/Db.php";
+$config = include_once(__DIR__ . '/config.php');
+include_once __DIR__ . "/Classes/Db.php";
 
 $db = new Db();
 

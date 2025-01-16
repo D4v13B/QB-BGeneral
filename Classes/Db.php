@@ -22,7 +22,7 @@ class Db
     */
    function __construct()
    {
-      $config = include "config.php";
+      $config = include_once "config.php";
 
       $this->host = $config["host_db"];
       $this->user = $config["user_db"];
