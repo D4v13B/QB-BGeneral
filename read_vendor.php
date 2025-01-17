@@ -26,7 +26,7 @@ foreach ($empresas as $empr) {
       'Content-Type' => 'application/text',
       'Authorization' => 'Bearer ' . $empr["empr_access_token"]
    ];
-   $body = 'SELECT * FROM vendor'; // Consulta SQL
+   $body = 'SELECT * FROM vendor startposition 1 maxresults 1000'; // Consulta SQL
    $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=73";
 
    try {
@@ -36,12 +36,12 @@ foreach ($empresas as $empr) {
       // Enviar la solicitud
       $response = $client->send($request);
 
+      
       // Obtener y procesar el cuerpo de la respuesta
       $vendorsApi = json_decode($response->getBody(), true)["QueryResponse"]["Vendor"];
-
-
+      
       $vendorsDb = $db->getVendors($realmID); // Proveedores de la base de datos
-
+      
       // Se extraen los IDs de los proveedores ya almacenados en la base de datos
       $dbVendorIds = array_column($vendorsDb, "qb_vendor_id");
       

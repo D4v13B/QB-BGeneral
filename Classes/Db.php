@@ -22,7 +22,7 @@ class Db
     */
    function __construct()
    {
-      $config = include_once "config.php";
+      $config = include "config.php";
 
       $this->host = $config["host_db"];
       $this->user = $config["user_db"];
@@ -92,7 +92,9 @@ class Db
 
          foreach ($vendors as $vend) {
             $id = (int) $vend["Id"];
-            $name = $this->quitarCaracteresEspeciales($vend["DisplayName"]); // Escapar caracteres problemáticos
+            // $name = $this->quitarCaracteresEspeciales($vend["DisplayName"]); // Escapar caracteres problemáticos
+            $name = $vend["DisplayName"]; // Escapar caracteres problemáticos
+
             $realmId = addslashes($realmId);
 
             $values[] = "($id, '$name', '$realmId', '0', '0', '10')";
@@ -191,7 +193,6 @@ class Db
                error_log("Vendor Info no encontrada para pago ID $id. Proveedor " . $vendorRef["name"]);
                continue;
             }
-
             
             $vendorName = $vendorInfo["bgpr_proveedor"];
             $vendorTipoCuenta = $vendorInfo["bgpr_tipo_cuenta"];
