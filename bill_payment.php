@@ -15,7 +15,7 @@ $httpClient = new HttpClient();
 $empresas = $db->getEmpresasActivas();
 
 foreach ($empresas as $empr) {
-   
+
    if (!$empr["empr_access_token"] or !$empr["accessTokenObj"]) {
       break;
    }
@@ -46,8 +46,6 @@ foreach ($empresas as $empr) {
       
       // Obtener y procesar el cuerpo de la respuesta
       $payments = json_decode($response->getBody(), true);
-      print_r($payments);
-      die();
 
       $paymentsDb = $db->getProcessedPayments($realmID); // Pagos procesados en la base de datos
 
