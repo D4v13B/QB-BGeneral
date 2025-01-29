@@ -24,6 +24,7 @@ foreach ($empresas as $empr) {
    $datetime = new DateTime();
    $datetime->modify($config["payments_time_interval"]);
    $formattedDate = $datetime->format('c');
+   $pagosCheques = [];
 
    $realmID = $empr["empr_qb_realm_id"];
    $client = new Client();
@@ -32,8 +33,8 @@ foreach ($empresas as $empr) {
       'Content-Type' => 'application/text',
       'Authorization' => 'Bearer ' . $empr["empr_access_token"]
    ]; 
-   echo $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate'"; // Consulta SQL
-   // echo $body = "SELECT * FROM BillPayment"; // Consulta SQL
+   echo $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate'"; // Cnsulta SQL
+   // echo $body = "SELECT * FROM BillPayment maxresults 1000"; // Consulta SQL
    $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=73";
 
    try {
@@ -45,25 +46,34 @@ foreach ($empresas as $empr) {
 
       
       // Obtener y procesar el cuerpo de la respuesta
-      $payments = json_decode($response->getBody(), true);
-
+      $payments = json_decode($response->getBody(), true)["QueryResponse"]["BillPayment"];
+      
       $paymentsDb = $db->getProcessedPayments($realmID); // Pagos procesados en la base de datos
-
+      
       // Se extraen los IDs de los pagos ya almacenados en la base de datos
       $dbPaymentsId = array_column($paymentsDb, "trpr_qb_id");
 
       // Se filtran los pagos de la API para encontrar aquellos que no están en la base de datos
       $unsavePayment = array_filter($payments, function ($pay) use ($dbPaymentsId) {
-         return !in_array($pay->Id, $dbPaymentsId);
+         return !in_array($pay["Id"], $dbPaymentsId);
       });
 
-      print_r($payments);
+      echo json_encode($unsavePayment);
+
+      // Filtrar los pagos de tipo cheque
+      foreach($unsavePayment as $up){
+
+         if(($up["PayType"]) == "Check"){
+            $pagosCheques[] = $up;
+         }
+      }
+
       /**
        * Guardar los pagos no guardados en la base de datos
        */
-      die();
-      if (!empty($unsavePayment["QueryResponse"]["BillPayment"])) {
-         echo $db->savePayments($unsavePayment["QueryResponse"]["BillPayment"], $realmID); // Se insertan los nuevos pagos en la base de datos
+      // die();
+      if (!empty($pagosCheques)) {
+         echo $db->savePayments($pagosCheques, $realmID); // Se insertan los nuevos pagos en la base de datos
       } else {
          echo "No hay pagos pendientes desde quickbooks";
       }
