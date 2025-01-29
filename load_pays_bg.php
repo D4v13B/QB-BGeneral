@@ -40,12 +40,10 @@ switch ($accion) {
           **/
          $pagosNoProcesados = $db->getPaysBg($emp["empr_id"]);
 
-         // print_r($pagosNoProcesados);
-
          // Verifica si existen pagos pendientes para procesar.
          if (empty($pagosNoProcesados)) {
-            echo json_encode(["msg" => "Todos los pagos ya han sido procesados anteriormente", "err" => false]);
-            break;
+            echo json_encode(["msg" => "Todos los pagos ya han sido procesados anteriormente", "err" => false, "pagos" => $pagosNoProcesados]);
+            continue;
          }
 
          // **Procesar los pagos**
