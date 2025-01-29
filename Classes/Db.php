@@ -103,6 +103,16 @@ class Db
          $sql = "INSERT INTO bg_proveedores(qb_vendor_id, bgpr_proveedor, bgpr_realm_id, bgpr_numero_cuenta, bgpr_tipo_cuenta, bgpr_banco) VALUES " . implode(', ', $values);
 
          $this->connection->query($sql);
+         
+         //Buscar todos los proveedores y actualizarlos
+         $sql = "UPDATE bg_proveedores p
+         INNER JOIN bg_proveedores_cuentas dp ON p.bgpr_proveedor = dp.nombre
+         SET p.bgpr_numero_cuenta = dp.cuenta_bancaria,
+            p.bgpr_banco = dp.bg_codigo_banco,
+            p.bgpr_tipo_cuenta = dp.tipo_cuenta
+         WHERE p.bgpr_numero_cuenta IS NULL OR p.bgpr_banco IS NULL OR p.bgpr_tipo_cuenta IS NULL OR p.bgpr_banco IS NULL OR bgpr_numero_cuenta = 0 OR bgpr_tipo_cuenta = 0";
+         
+         $this->connection->query($sql);
 
          return true;
       } catch (PDOException $e) {
@@ -164,6 +174,7 @@ class Db
          $empresaTipoCuenta = $empresaInfo["empr_tipo_cuenta"];
 
          $stmt = $this->connection->prepare("INSERT INTO bg_transacciones(
+               qb_vendor_id,
                 tran_descripcion, 
                 tran_monto, 
                 tran_fecha_inicial, 
@@ -178,14 +189,14 @@ class Db
                 empr_id
             ) 
             VALUES
-            (:descripcion, :monto, NOW(), '0', :codigo_producto, :cuenta_origen, :nombre_beneficiario, :codigo_banco, :codigo_producto_beneficiario, :numero_cuenta_beneficiario, '0', :empresa_id)");
+            (:qb_vendor,:descripcion, :monto, NOW(), '0', :codigo_producto, :cuenta_origen, :nombre_beneficiario, :codigo_banco, :codigo_producto_beneficiario, :numero_cuenta_beneficiario, '0', :empresa_id)");
 
          $this->connection->beginTransaction();
 
          foreach ($payments as $pay) {
             $id = $pay["Id"] ?? null;
             $vendorRef = $pay["VendorRef"] ?? null;
-            $monto = $pay["TotalAmt"] ?? null; 
+            $monto = $pay["TotalAmt"] ?? null;
 
             $vendorInfo = $this->getVendorInfo($realmId, $vendorRef["value"]);
 
@@ -193,18 +204,19 @@ class Db
                error_log("Vendor Info no encontrada para pago ID $id. Proveedor " . $vendorRef["name"]);
                continue;
             }
-            
+
             $vendorName = $vendorInfo["bgpr_proveedor"];
             $vendorTipoCuenta = $vendorInfo["bgpr_tipo_cuenta"];
             $vendorBanco = $vendorInfo["bgpr_banco"];
             $vendorNumeroCuenta = $vendorInfo["bgpr_numero_cuenta"];
-         
-            if($vendorTipoCuenta == 0 or $vendorNumeroCuenta == 0 or $vendorNumeroCuenta == null or $vendorTipoCuenta == null){
+
+            if ($vendorTipoCuenta == 0 or $vendorNumeroCuenta == 0 or $vendorNumeroCuenta == null or $vendorTipoCuenta == null) {
                error_log("{$vendorName} no tiene DATOS BANCARIOS registrados para la empresa de quickbooks con ID {$realmId}");
                continue;
             }
 
             $valuesArray = [
+               ":qb_vendor" => $vendorRef["value"],
                ":descripcion" => "Pago a $vendorName",
                ":monto" => $monto,
                ":codigo_producto" => $empresaTipoCuenta,
@@ -362,9 +374,21 @@ class Db
 
       try {
          // Prepara la consulta SQL para obtener las transacciones y loRMs detalles de la empresa y que no han sido cargados a BGeneral
-         $stmt = $this->connection->prepare("SELECT * FROM bg_transacciones a
-        INNER JOIN empresas b ON b.empr_id = a.empr_id 
-        WHERE (tran_estado = 0 OR tran_estado IS NULL) AND b.empr_id = :empr_id LIMIT 50");
+         $stmt = $this->connection->prepare("SELECT trans_id,
+            tran_descripcion,
+            tran_monto,
+            tran_fecha_inicial,
+            tran_propia,
+            c.bgpr_numero_cuenta as tran_numero_cuenta_beneficiario,
+            c.bgpr_tipo_cuenta as tran_codigo_producto_beneficiario,
+            tran_nombre_beneficiario,
+            tran_codigo_banco,
+            b.empr_numero_cuenta as tran_cuenta_origen,
+            b.empr_tipo_cuenta as tran_codigo_producto
+         FROM bg_transacciones a
+         INNER JOIN empresas b ON b.empr_id = a.empr_id
+         INNER JOIN bg_proveedores c ON a.qb_vendor_id = c.qb_vendor_id
+         WHERE (tran_estado = 0 OR tran_estado IS NULL) AND b.empr_id = :empr_id LIMIT 50");
 
          // Ejecuta la consulta
          $stmt->execute([
