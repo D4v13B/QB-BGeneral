@@ -1,0 +1,44 @@
+{
+  "VendorRef": {
+    "value": "18",
+    "name": "MAYRA ALEJANDRA ORTIZ"
+  },
+  "PayType": "Check",
+  "CheckPayment": {
+    "BankAccountRef": {
+      "value": "91",
+      "name": "BANCOS Y EFECTIVO:Banco General"
+    },
+    "PrintStatus": "NotSet"
+  },
+  "TotalAmt": 188.04,
+  "domain": "QBO",
+  "sparse": false,
+  "Id": "1203",
+  "SyncToken": "0",
+  "MetaData": {
+    "CreateTime": "2025-01-23T11:17:03-08:00",
+    "LastUpdatedTime": "2025-01-23T11:17:03-08:00"
+  },
+  "DocNumber": "333",
+  "TxnDate": "2025-01-25",
+  "DepartmentRef": {
+    "value": "1"
+  },
+  "CurrencyRef": {
+    "value": "USD",
+    "name": "Dólar estadounidense"
+  },
+  "ExchangeRate": 1,
+  "Line": [
+    {
+      "Amount": 188.04,
+      "LinkedTxn": [
+        {
+          "TxnId": "1202",
+          "TxnType": "Bill"
+        }
+      ]
+    }
+  ]
+}

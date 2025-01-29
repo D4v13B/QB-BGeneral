@@ -1,5 +1,6 @@
 <?php
-ini_set('serialize_precision',10);
+ini_set('serialize_precision', 10);
+
 use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
 
 class ServiceTransact
@@ -10,9 +11,18 @@ class ServiceTransact
 
    public function __construct(Db $db, HttpClient $httpClient)
    {
-      $this->config = require_once "config.php";
+      $this->config = require "./config.php";
       $this->db = $db;
       $this->httpClient = $httpClient;
+   }
+
+   public function quitarCaracteresEspeciales($string)
+   {
+      // Convertir caracteres especiales (tildes, ñ) a ASCII
+      $string = iconv('UTF-8', 'ASCII//TRANSLIT', $string);
+      // Eliminar todo lo que no sea una letra (a-z o A-Z)
+      $string = preg_replace('/[^a-zA-Z\s]/', '', $string);
+      return $string;
    }
 
    /**
@@ -27,14 +37,14 @@ class ServiceTransact
 
          $tranPropia = $pago["tran_propia"] == 0 ? false : true;;
          $transacciones[] = [
-            "descripcion" => strval($pago['tran_descripcion'] ?? "TRANFE PROPIA H2H"),
+            "descripcion" => $this->quitarCaracteresEspeciales(strval($pago['tran_descripcion'] ?? "TRANFE PROPIA H2H")),
             // "monto" => number_format($pago['tran_monto'], 2, ".", ""), // Forzar formato de 2 decimales
             "monto" => $montoPago, // Forzar formato de 2 decimales
             "fechaInicial" => date("Y-m-d\TH:i:s.v\Z", strtotime($pago['tran_fecha_inicial'])),
             "trnPropia" => (bool)$tranPropia,
             "codigoProducto" => (float)number_format((float)$pago['empr_tipo_cuenta'], 2, '.', ''), // Forzar formato de 2 decimales
             "cuentaOrigen" => strval($pago['empr_numero_cuenta']), // Mantener como cadena
-            "nombreBeneficiario" => strval($pago['tran_nombre_beneficiario']),
+            "nombreBeneficiario" => $this->quitarCaracteresEspeciales(strval($pago['tran_nombre_beneficiario'])),
             "codigoBanco" => (int)$pago['tran_codigo_banco'], // Convertir a entero
             "codigoProductoBeneficiario" => (int)$pago['tran_codigo_producto_beneficiario'], // Convertir a entero
             "numeroCuentaBeneficiario" => strval(trim($pago['tran_numero_cuenta_beneficiario'])), // Mantener como cadena
