@@ -33,7 +33,7 @@ foreach ($empresas as $empr) {
       'Content-Type' => 'application/text',
       'Authorization' => 'Bearer ' . $empr["empr_access_token"]
    ]; 
-   echo $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate'"; // Cnsulta SQL
+   echo $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate' maxresults 1000"; // Cnsulta SQL
    // echo $body = "SELECT * FROM BillPayment maxresults 1000"; // Consulta SQL
    $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=73";
 
@@ -58,6 +58,8 @@ foreach ($empresas as $empr) {
          return !in_array($pay["Id"], $dbPaymentsId);
       });
 
+      echo json_encode($payments);
+
       echo json_encode($unsavePayment);
 
       // Filtrar los pagos de tipo cheque
@@ -68,6 +70,8 @@ foreach ($empresas as $empr) {
          }
       }
 
+      echo json_encode($pagosCheques);
+
       /**
        * Guardar los pagos no guardados en la base de datos
        */
@@ -75,7 +79,7 @@ foreach ($empresas as $empr) {
       if (!empty($pagosCheques)) {
          echo $db->savePayments($pagosCheques, $realmID); // Se insertan los nuevos pagos en la base de datos
       } else {
-         echo "No hay pagos pendientes desde quickbooks";
+         echo "No hay pagos pendientes desde quickbooks</br>" . PHP_EOL;
       }
    } catch (RequestException $e) {
       // Manejo de errores

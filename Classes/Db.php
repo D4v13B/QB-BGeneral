@@ -103,7 +103,7 @@ class Db
          $sql = "INSERT INTO bg_proveedores(qb_vendor_id, bgpr_proveedor, bgpr_realm_id, bgpr_numero_cuenta, bgpr_tipo_cuenta, bgpr_banco) VALUES " . implode(', ', $values);
 
          $this->connection->query($sql);
-         
+
          //Buscar todos los proveedores y actualizarlos
          $sql = "UPDATE bg_proveedores p
          INNER JOIN bg_proveedores_cuentas dp ON p.bgpr_proveedor = dp.nombre
@@ -111,7 +111,18 @@ class Db
             p.bgpr_banco = dp.bg_codigo_banco,
             p.bgpr_tipo_cuenta = dp.tipo_cuenta
          WHERE p.bgpr_numero_cuenta IS NULL OR p.bgpr_banco IS NULL OR p.bgpr_tipo_cuenta IS NULL OR p.bgpr_banco IS NULL OR bgpr_numero_cuenta = 0 OR bgpr_tipo_cuenta = 0";
-         
+
+         $this->connection->query($sql);
+
+         // Buscar proveedores dentro de la tabla y actualizarlo
+         $sql = "UPDATE bg_proveedores p1
+         JOIN bg_proveedores p2
+         ON p1.bgpr_proveedor = p2.bgpr_proveedor
+               AND p2.bgpr_numero_cuenta <> '0'
+               AND p2.bgpr_numero_cuenta IS NOT NULL
+         SET p1.bgpr_numero_cuenta = p2.bgpr_numero_cuenta, p1.bgpr_tipo_cuenta = p2.bgpr_tipo_cuenta, p1.bgpr_banco = p2.bgpr_banco
+         WHERE p1.bgpr_numero_cuenta = '0' OR (p1.bgpr_tipo_cuenta = 0 AND p1.bgpr_banco = 10);";
+
          $this->connection->query($sql);
 
          return true;
@@ -374,7 +385,11 @@ class Db
 
       try {
          // Prepara la consulta SQL para obtener las transacciones y loRMs detalles de la empresa y que no han sido cargados a BGeneral
-         $stmt = $this->connection->prepare("SELECT trans_id,
+         $stmt = $this->connection->prepare("SELECT
+            c.qb_vendor_id,
+            a.qb_vendor_id,
+            b.empr_id,
+            trans_id,
             tran_descripcion,
             tran_monto,
             tran_fecha_inicial,
@@ -383,12 +398,15 @@ class Db
             c.bgpr_tipo_cuenta as tran_codigo_producto_beneficiario,
             tran_nombre_beneficiario,
             tran_codigo_banco,
-            b.empr_numero_cuenta as tran_cuenta_origen,
-            b.empr_tipo_cuenta as tran_codigo_producto
-         FROM bg_transacciones a
-         INNER JOIN empresas b ON b.empr_id = a.empr_id
-         INNER JOIN bg_proveedores c ON a.qb_vendor_id = c.qb_vendor_id
-         WHERE (tran_estado = 0 OR tran_estado IS NULL) AND b.empr_id = :empr_id LIMIT 50");
+            b.empr_numero_cuenta,
+            b.empr_tipo_cuenta
+         FROM bg_transacciones a, empresas b, bg_proveedores c
+         WHERE
+            a.empr_id = b.empr_id AND
+            a.qb_vendor_id = c.qb_vendor_id AND
+            c.bgpr_realm_id = b.empr_qb_realm_id AND
+            (tran_estado = 0 OR tran_estado IS NULL) AND
+            a.qb_vendor_id IS NOT NULL AND b.empr_id = :empr_id LIMIT 50");
 
          // Ejecuta la consulta
          $stmt->execute([
