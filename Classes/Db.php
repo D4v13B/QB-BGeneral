@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Clase `Db`
  *
@@ -538,6 +537,54 @@ class Db
          ]);
 
          return true;
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function getTemplate(string $plantilla)
+   {
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("SELECT plan_contenido FROM plantillas WHERE plan_nombre = :nombre");
+
+         // Ejecuta la consulta
+         $stmt->execute([":nombre" => $plantilla]);
+
+         $res = $stmt->fetch(PDO::FETCH_ASSOC);
+
+         if (!$res) {
+            return false;
+         }
+
+         return $res["plan_contenido"];
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return false;
+      }
+   }
+
+   public function getUserEmailNotifications()
+   {
+      $this->connect();
+
+      try {
+
+         $stmt = $this->connection->prepare("SELECT usua_email FROM usuarios WHERE usua_notificacion_banco = 1");
+
+         // Ejecuta la consulta
+         $stmt->execute();
+
+         $res = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
+         if (!$res) {
+            return false;
+         }
+
+         return $res;
       } catch (PDOException $e) {
          echo "Error: " . $e->getMessage();
          return false;

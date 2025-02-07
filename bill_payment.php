@@ -8,6 +8,7 @@ use GuzzleHttp\Exception\RequestException;
 require_once __DIR__ . '/vendor/autoload.php';
 include_once __DIR__ . "/Classes/Db.php";
 include_once __DIR__ . "/Classes/HttpClient.php";
+include_once __DIR__ . "/Classes/Email.php";
 $config = include_once __DIR__ . '/config.php';
 
 $db = new Db();
@@ -58,9 +59,9 @@ foreach ($empresas as $empr) {
          return !in_array($pay["Id"], $dbPaymentsId);
       });
 
-      echo json_encode($payments);
+      // echo json_encode($payments);
 
-      echo json_encode($unsavePayment);
+      // echo json_encode($unsavePayment);
 
       // Filtrar los pagos de tipo cheque
       foreach($unsavePayment as $up){

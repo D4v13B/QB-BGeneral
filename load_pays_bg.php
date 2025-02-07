@@ -8,12 +8,13 @@ require_once "vendor/autoload.php";
 require_once "./Classes/Db.php";
 require_once "./Classes/HttpClient.php";
 require_once "./Classes/ServiceTransact.php";
+require_once "./Classes/Email.php";
 
 $config = require_once "./config.php";
 
 $clientHttp = new HttpClient();
 $db = new Db();
-$transact = new ServiceTransact($db, $clientHttp);
+$transact = new ServiceTransact($db, $clientHttp, new Mailer());
 
 $accion = $_GET["a"];
 

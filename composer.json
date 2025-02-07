@@ -6,7 +6,8 @@
   "homepage": "http://developer.intuit.com",
   "require": {
     "quickbooks/v3-php-sdk": ">=5.3.9",
-    "guzzlehttp/guzzle": "^7.9"
+    "guzzlehttp/guzzle": "^7.9",
+    "phpmailer/phpmailer": "^6.9"
   },
   "author": "anil_kumar",
   "license": "MIT"

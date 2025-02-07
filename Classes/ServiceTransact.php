@@ -2,18 +2,19 @@
 ini_set('serialize_precision', 10);
 
 use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
-
 class ServiceTransact
 {
    private Db $db;
    private HttpClient $httpClient;
    private array $config;
+   private Mailer $mailer;
 
-   public function __construct(Db $db, HttpClient $httpClient)
+   public function __construct(Db $db, HttpClient $httpClient, Mailer $mailer)
    {
       $this->config = require "./config.php";
       $this->db = $db;
       $this->httpClient = $httpClient;
+      $this->mailer = $mailer;
    }
 
    public function quitarCaracteresEspeciales($string)
@@ -87,6 +88,15 @@ class ServiceTransact
          }
       } catch (Exception $e) {
          echo json_encode(["msg" => $e->getMessage()]);
+         //Enviar EMAIL DE ERROR
+
+         //Plantilla para enviar correos de error
+         $plantillaEmail = $this->db->getTemplate("BG-NOTIFICACION");
+         $users = $this->db->getUserEmailNotifications();
+
+         $plantillaEmail = str_replace("[MENSAJE_ERROR]", $e->getMessage(), $plantillaEmail);
+
+         $this->mailer->sendMail($users, "ERRORES EN BANCO GENERAL", $plantillaEmail);
       }
    }
 
