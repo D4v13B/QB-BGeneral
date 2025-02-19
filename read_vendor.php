@@ -27,7 +27,7 @@ foreach ($empresas as $empr) {
       'Authorization' => 'Bearer ' . $empr["empr_access_token"]
    ];
    $body = 'SELECT * FROM vendor startposition 1 maxresults 1000'; // Consulta SQL
-   $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=73";
+   $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=75";
 
    try {
       // Crear la solicitud

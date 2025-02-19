@@ -36,7 +36,7 @@ foreach ($empresas as $empr) {
    ]; 
    echo $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate' maxresults 1000"; // Cnsulta SQL
    // echo $body = "SELECT * FROM BillPayment maxresults 1000"; // Consulta SQL
-   $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=73";
+   $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=75";
 
    try {
       // Crear la solicitud
@@ -45,9 +45,13 @@ foreach ($empresas as $empr) {
       // Enviar la solicitud
       $response = $client->send($request);
 
-      
+      if(!isset(json_decode($response->getBody(), true)["QueryResponse"]["BillPayment"])){
+         continue;
+      }
+
       // Obtener y procesar el cuerpo de la respuesta
       $payments = json_decode($response->getBody(), true)["QueryResponse"]["BillPayment"];
+
       
       $paymentsDb = $db->getProcessedPayments($realmID); // Pagos procesados en la base de datos
       
@@ -66,7 +70,7 @@ foreach ($empresas as $empr) {
       // Filtrar los pagos de tipo cheque
       foreach($unsavePayment as $up){
 
-         if(($up["PayType"]) == "Check"){
+         if(($up["PayType"]) == "Check" and $up["TotalAmt"] != 0){
             $pagosCheques[] = $up;
          }
       }
@@ -76,7 +80,6 @@ foreach ($empresas as $empr) {
       /**
        * Guardar los pagos no guardados en la base de datos
        */
-      // die();
       if (!empty($pagosCheques)) {
          echo $db->savePayments($pagosCheques, $realmID); // Se insertan los nuevos pagos en la base de datos
       } else {
