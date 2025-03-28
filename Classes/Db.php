@@ -444,7 +444,7 @@ class Db
             a.empr_id = b.empr_id AND
             a.qb_vendor_id = c.qb_vendor_id AND
             c.bgpr_realm_id = b.empr_qb_realm_id AND
-            ((tran_estado = 0 OR tran_estado IS NULL) AND tran_procesar = 1) AND
+            (((tran_estado = 0 OR tran_estado IS NULL) OR (tran_estado = 1 AND tran_res = 'EE')) AND tran_procesar = 1) AND
             a.qb_vendor_id IS NOT NULL AND b.empr_id = :empr_id LIMIT 50");
 
          // Ejecuta la consulta
