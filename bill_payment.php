@@ -1,6 +1,8 @@
 <?php
+
+include "cors.php";
+
 date_default_timezone_set("America/Panama");
-// echo date_default_timezone_get();
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Exception\RequestException;
@@ -34,8 +36,7 @@ foreach ($empresas as $empr) {
       'Content-Type' => 'application/text',
       'Authorization' => 'Bearer ' . $empr["empr_access_token"]
    ]; 
-   echo $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate' maxresults 1000"; // Cnsulta SQL
-   // echo $body = "SELECT * FROM BillPayment maxresults 1000"; // Consulta SQL
+   $body = "SELECT * FROM BillPayment WHERE MetaData.CreateTime >= '$formattedDate' maxresults 1000"; // Cnsulta SQL
    $url = "https://quickbooks.api.intuit.com/v3/company/" . $empr["empr_qb_realm_id"] . "/query?minorversion=75";
 
    try {
@@ -52,7 +53,6 @@ foreach ($empresas as $empr) {
       // Obtener y procesar el cuerpo de la respuesta
       $payments = json_decode($response->getBody(), true)["QueryResponse"]["BillPayment"];
 
-      
       $paymentsDb = $db->getProcessedPayments($realmID); // Pagos procesados en la base de datos
       
       // Se extraen los IDs de los pagos ya almacenados en la base de datos
@@ -63,27 +63,20 @@ foreach ($empresas as $empr) {
          return !in_array($pay["Id"], $dbPaymentsId);
       });
 
-      // echo json_encode($payments);
-
-      // echo json_encode($unsavePayment);
-
       // Filtrar los pagos de tipo cheque
       foreach($unsavePayment as $up){
 
-         if(($up["PayType"]) == "Check" and $up["TotalAmt"] != 0){
+         if(($up["PayType"]) == "Check" and $up["TotalAmt"] != 0){ //Solo pasa lo que esta marcado como cheque
             $pagosCheques[] = $up;
          }
       }
-
-      echo json_encode($pagosCheques);
-
       /**
        * Guardar los pagos no guardados en la base de datos
        */
       if (!empty($pagosCheques)) {
-         echo $db->savePayments($pagosCheques, $realmID); // Se insertan los nuevos pagos en la base de datos
+         $db->savePayments($pagosCheques, $realmID); // Se insertan los nuevos pagos en la base de datos
       } else {
-         echo "No hay pagos pendientes desde quickbooks</br>" . PHP_EOL;
+         echo json_encode(["msg" => "No hay pagos pendientes desde quickbooks"]);
       }
    } catch (RequestException $e) {
       // Manejo de errores

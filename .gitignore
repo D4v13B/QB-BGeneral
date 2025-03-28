@@ -7,3 +7,6 @@ config.php
 docs/*
 *.ipynb
 prueba_correo.php
+
+bgpr_bg_*.php
+bgtr_bg_*.php

@@ -10,7 +10,7 @@ class HttpClient
 
    public function __construct()
    {
-      $config = require_once "config.php";
+      $config = require __DIR__ . "/../config.php";
       $this->baseUrl = $config["apiBaseUrl"];
 
       // Crear una instancia de Guzzle Client con la URL base
@@ -66,11 +66,12 @@ class HttpClient
     * @param array $queryParams
     * @return array|null
     */
-   public function get(string $endpoint, array $queryParams = []): ?array
+   public function get(string $endpoint, array $queryParams = [], array $headers = []): ?array
    {
       try {
          $response = $this->client->request('GET', $endpoint, [
-            'query' => $queryParams
+            'query' => $queryParams,
+            'headers' => $headers
          ]);
 
          return json_decode($response->getBody()->getContents(), true);

@@ -115,12 +115,15 @@ class Db
 
          // Buscar proveedores dentro de la tabla y actualizarlo
          $sql = "UPDATE bg_proveedores p1
-         JOIN bg_proveedores p2
-         ON p1.bgpr_proveedor = p2.bgpr_proveedor
-               AND p2.bgpr_numero_cuenta <> '0'
-               AND p2.bgpr_numero_cuenta IS NOT NULL
-         SET p1.bgpr_numero_cuenta = p2.bgpr_numero_cuenta, p1.bgpr_tipo_cuenta = p2.bgpr_tipo_cuenta, p1.bgpr_banco = p2.bgpr_banco
-         WHERE p1.bgpr_numero_cuenta = '0' OR (p1.bgpr_tipo_cuenta = 0 AND p1.bgpr_banco = 10);";
+            JOIN bg_proveedores p2
+            ON p1.bgpr_proveedor = p2.bgpr_proveedor
+            AND p2.bgpr_numero_cuenta <> '0'
+            AND p2.bgpr_numero_cuenta IS NOT NULL
+            SET p1.bgpr_numero_cuenta = p2.bgpr_numero_cuenta, 
+                p1.bgpr_tipo_cuenta = p2.bgpr_tipo_cuenta, 
+                p1.bgpr_banco = p2.bgpr_banco
+            WHERE p1.bgpr_numero_cuenta = '0' 
+               OR (p1.bgpr_tipo_cuenta = 0 AND p1.bgpr_banco = 10)";
 
          $this->connection->query($sql);
 
@@ -162,6 +165,21 @@ class Db
       }
    }
 
+   public function getPayInfo(int $payId)
+   {
+      $this->connect();
+
+      try {
+         $stmt = $this->connection->prepare("SELECT a.*, b.empr_email, b.empr_nombre FROM bg_transacciones a, empresas b WHERE trans_id = :id AND a.empr_id = b.empr_id");
+         $stmt->execute([":id" => $payId]);
+
+         return $stmt->fetch(PDO::FETCH_ASSOC);
+      } catch (PDOException $e) {
+         echo "Error: " . $e->getMessage();
+         return [];
+      }
+   }
+
    /**
     * Guarda una lista de pagos en la base de datos.
     *
@@ -175,13 +193,14 @@ class Db
    {
       $this->connect();
 
-      print_r($payments);
+      // print_r($payments);
 
       try {
          $empresaInfo = $this->getEmpresaInfo($realmId);
          $empresaId = $empresaInfo["empr_id"];
          $empresaNumeroCuenta = $empresaInfo["empr_numero_cuenta"];
          $empresaTipoCuenta = $empresaInfo["empr_tipo_cuenta"];
+
 
          $stmt = $this->connection->prepare("INSERT INTO bg_transacciones(
                qb_vendor_id,
@@ -220,6 +239,8 @@ class Db
             $vendorBanco = $vendorInfo["bgpr_banco"];
             $vendorNumeroCuenta = $vendorInfo["bgpr_numero_cuenta"];
 
+            $nota = isset($pay["PrivateNote"]) ? $pay["PrivateNote"] : "Pago a $vendorName";
+
             if ($vendorTipoCuenta == 0 or $vendorNumeroCuenta == 0 or $vendorNumeroCuenta == null or $vendorTipoCuenta == null) {
                error_log("{$vendorName} no tiene DATOS BANCARIOS registrados para la empresa de quickbooks con ID {$realmId}");
                continue;
@@ -227,7 +248,7 @@ class Db
 
             $valuesArray = [
                ":qb_vendor" => $vendorRef["value"],
-               ":descripcion" => "Pago a $vendorName",
+               ":descripcion" => $nota,
                ":monto" => $monto,
                ":codigo_producto" => $empresaTipoCuenta,
                ":cuenta_origen" => $empresaNumeroCuenta,
@@ -339,6 +360,25 @@ class Db
       }
    }
 
+   public function getVendorXAccount($accountNumber): array
+   {
+      $this->connect();
+
+      try {
+         // echo "VendorID $qbVendorId" . " " . "Realm ID $realmId" . "<br>";s
+
+         $sql = "SELECT * FROM bg_proveedores WHERE bgpr_numero_cuenta = '$accountNumber'";
+         $stmt = $this->connection->query($sql);
+
+         $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+         return $result;
+      } catch (PDOException $e) {
+         error_log("Error en getVendorInfo: " . $e->getMessage());
+         return ["error" => $e->getMessage()];
+      }
+   }
+
    /**
     * Guarda un pago procesado en la base de datos.
     *
@@ -404,7 +444,7 @@ class Db
             a.empr_id = b.empr_id AND
             a.qb_vendor_id = c.qb_vendor_id AND
             c.bgpr_realm_id = b.empr_qb_realm_id AND
-            (tran_estado = 0 OR tran_estado IS NULL) AND
+            ((tran_estado = 0 OR tran_estado IS NULL) AND tran_procesar = 1) AND
             a.qb_vendor_id IS NOT NULL AND b.empr_id = :empr_id LIMIT 50");
 
          // Ejecuta la consulta
@@ -417,11 +457,11 @@ class Db
       } catch (PDOException $e) {
          // Muestra el mensaje de error en caso de excepción y retorna false
          echo "Error: " . $e->getMessage();
-         return false;
+         return [];
       }
    }
 
-   public function updatePayResponse(int $payId, int $status, string $res, string $codigoPago = null): bool
+   public function updatePayResponse(int $payId, int $status, string $res, string $codigoPago = ''): bool
    {
       $this->connect();
 
@@ -471,7 +511,7 @@ class Db
 
       try {
 
-         $stmt = $this->connection->prepare("SELECT trans_id FROM bg_transacciones WHERE tran_status_detail IS NULL or tran_status_detail = 'AUTORIZACION PENDIENTE' AND empr_id = :empr_id");
+         $stmt = $this->connection->prepare("SELECT * FROM bg_transacciones WHERE tran_status_detail IS NULL or tran_status_detail = 'AUTORIZACION PENDIENTE' AND empr_id = :empr_id");
 
          // Ejecuta la consulta
          $stmt->execute([

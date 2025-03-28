@@ -1,7 +1,7 @@
 <?php
 ini_set('serialize_precision', 10);
 
-use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
+// use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
 class ServiceTransact
 {
    private Db $db;
@@ -29,9 +29,10 @@ class ServiceTransact
    /**
     * Procesa los pagos no procesados y los envía a la API de destino
     */
-   public function procesarPagos($token, $pagosNoProcesados, $clientId)
+   public function procesarPagos($token, $pagosNoProcesados, $clientId, $emprNotiEmail)
    {
       $transacciones = [];
+      $plantillaOriginal = $this->db->getTemplate('BG-NOTI-EMPRESA');
 
       foreach ($pagosNoProcesados as $pago) {
          $montoPago = (float)number_format($pago["tran_monto"], 2, ".", "");
@@ -84,6 +85,15 @@ class ServiceTransact
                $this->db->updatePayResponse($res["secuencial"], 1, $estadoTransaccion);
             } else {
                $this->db->updatePayResponse($res["secuencial"], 1, $estadoTransaccion, $res["codigoPago"]);
+
+               //Vamos a buscar la info de la transaccion para notificar a quien se pago y el monto que se hizo
+               // $payInfo = $this->db->getPayInfo($res["secuencial"]);
+
+               //Vamos a buscar la plantilla
+               // $plantillaEnviar = str_replace("[PROVEEDOR]", $payInfo["tran_nombre_beneficiario"], $plantillaOriginal);
+               // $plantillaEnviar = str_replace("[PROVEEDOR]", $payInfo["trans_monto"], $plantillaEnviar);
+
+               // $this->mailer->sendMail($payInfo["empr_email"], "PAGO EFECTUADO A ". $payInfo["tran_nombre_beneficiario"] , $plantillaEnviar);
             }
          }
       } catch (Exception $e) {
@@ -100,21 +110,30 @@ class ServiceTransact
       }
    }
 
-   public function getPayInfo(int $id, string $token)
+   public function getPayInfo(int $id, string $token, string $clientId)
    {
 
       try {
-         $headers = [
+         $params = [
             "query" => [
                "codigoAutorizacion" => $id,
-               "fecha" => new Date()
+               "fecha" => (new DateTime())->format('Y-m-d\TH:i:s.100')
             ],
-            'Content-Type' => 'application/json',
-            'authorization' => 'Bearer ' . $token,
-            'x-ibm-client-id' => $this->config['x-ibm-clientd-id']
+            "headers" => [
+               'Content-Type' => 'application/json',
+               'Authorization' => 'Bearer '. $token,
+               'x-ibm-client-id' => $clientId
+            ]
          ];
 
-         $response = $this->httpClient->get('h2h/transaccion/individuales', $headers);
+         $response = $this->httpClient->get('h2h/transaccion/individuales', $params["query"], $params["headers"]);
+
+         // $estado = $response["body"]["detalleTransaccionesIndividuales"]["descripcionEstado"];
+
+
+         // if($estado == ""){
+
+         // }
 
          return $response;
       } catch (Exception $th) {

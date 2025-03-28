@@ -2,7 +2,9 @@
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
+// use oasis\names\specification\ubl\schema\xsd\CommonBasicComponents_2\Date;
+
+include "./cors.php";
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . "/Classes/Db.php";
